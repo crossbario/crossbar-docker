@@ -25,6 +25,8 @@ RUN chown -R crossbar:crossbar /node
 USER crossbar
 EXPOSE 8080 8000
 
+# make /node a volume to allow external configuration
+VOLUME /node
+
 # entrypoint for the Docker image is the Crossbar.io executable
-WORKDIR /node
 ENTRYPOINT ["crossbar", "start", "--cbdir", "/node/.crossbar"]

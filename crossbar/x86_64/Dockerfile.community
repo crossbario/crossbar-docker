@@ -6,20 +6,19 @@ ENV HOME /node
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
 ENV PATH /usr/local/bin:$PATH
-ENV CROSSBAR_VERSION 0.13.2
+ENV CROSSBAR_VERSION 0.15.0
 
-RUN    apk --update upgrade \
+RUN apk --update upgrade \
+    && apk add libffi \
     && apk add --virtual build-dependencies \
-                            git \
-                            build-base \
-                            python-dev \
-                            py-pip \
-                            libffi-dev \
-                            openssl-dev \
-                            linux-headers \
+        build-base \
+        python3-dev \
+        libffi-dev \
+        openssl-dev \
+        linux-headers \
 
     && pip install -U pip \
-    && pip install git+https://github.com/dvarrazzo/py-setproctitle.git@fix-44 \
+    && pip install cffi \
     && pip install crossbar==${CROSSBAR_VERSION} \
 
     # clean up and shrink the image size
@@ -47,11 +46,12 @@ RUN    apk --update upgrade \
 COPY ./node/ /node/
 RUN chown -R crossbar:crossbar /node
 
-# entrypoint for the Docker image is the Crossbar.io executable
-WORKDIR /node
+# make /node a volume to allow external configuration
+VOLUME /node
 
 # run under this user, and expose default port
-# FIXME: running under "crossbar" breaks!
-#USER crossbar
+USER crossbar
 EXPOSE 8080 8000
+
+# entrypoint for the Docker image is the Crossbar.io executable
 ENTRYPOINT ["crossbar", "start", "--cbdir", "/node/.crossbar"]
