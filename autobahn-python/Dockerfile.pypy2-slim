@@ -1,0 +1,29 @@
+FROM pypy:2-slim
+
+MAINTAINER The Crossbar.io Project <support@crossbario.com>
+
+ENV HOME /app
+ENV DEBIAN_FRONTEND noninteractive
+
+# Crossbar.io connection defaults
+ENV CBURL ws://crossbar:8080/ws
+ENV CBREALM realm1
+
+# make "pypy" available as "python"
+RUN ln -s /usr/local/bin/pypy /usr/local/bin/python
+
+# install Autobahn|Python
+RUN export PKGS='build-essential libsnappy-dev' \
+	&& set -x \
+	&& apt-get update && apt-get install -y ${PKGS} --no-install-recommends && rm -rf /var/lib/apt/lists/* \
+	&& pip install -U pip  \
+	&& pip install autobahn[all] \
+	&& apt-get purge -y --auto-remove ${PKGS}
+
+# add example service
+COPY ./app /app
+
+# run service entry script by default
+WORKDIR /app
+RUN ln -s /app/client_tx.py /app/client.py
+CMD ["sh", "/app/run"]

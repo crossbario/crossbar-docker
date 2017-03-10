@@ -1,0 +1,33 @@
+FROM pypy:2-slim
+
+MAINTAINER The Crossbar.io Project <support@crossbario.com>
+
+ENV HOME /node
+ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONUNBUFFERED 1
+ENV PATH /usr/local/bin:$PATH
+ENV CROSSBAR_VERSION 0.14.0
+
+RUN export PKGS='build-essential git libssl-dev' \
+	&& set -x \
+	&& apt-get update && apt-get install -y ${PKGS} --no-install-recommends \
+    && pip install crossbar==${CROSSBAR_VERSION} \
+    #add our user and group
+    && adduser --home /node --disabled-password --gecos "Crossbar.io Service" crossbar \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& rm -rf /tmp/* \
+	&& apt-get purge -y --auto-remove ${PKGS} \
+	&& crossbar version
+
+# initialize a Crossbar.io node
+COPY ./node/ /node/
+RUN chown -R crossbar:crossbar /node
+
+# entrypoint for the Docker image is the Crossbar.io executable
+WORKDIR /node
+
+# run under this user, and expose default port
+USER crossbar
+EXPOSE 8080 8000
+
+ENTRYPOINT ["crossbar", "start", "--cbdir", "/node/.crossbar"]
