@@ -45,8 +45,9 @@ RUN    addgroup crossbar \
 
 # initialize a Crossbar.io node
 COPY ./node/ /node/
-RUN chown -R crossbar:crossbar /node
-
+RUN chown -R crossbar:root /node &&\
+    chmod g+w -R /node
+    
 # make /node a volume to allow external configuration
 VOLUME /node
 
