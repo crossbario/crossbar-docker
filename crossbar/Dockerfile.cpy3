@@ -1,13 +1,32 @@
-FROM aarch64/python:3.6
+ARG IMAGE_PREFIX
+FROM ${IMAGE_PREFIX}python:3.6
 
-COPY .qemu/qemu-aarch64-static /usr/bin/qemu-aarch64-static
+ARG CROSSBAR_VERSION
 
+# install dependencies and Crossbar.io
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+               ca-certificates \
+               build-essential \
+               libssl-dev
+
+# install Crossbar.io from PyPI
+ENV PYTHONDONTWRITEBYTECODE 1
+RUN pip install --no-cache-dir --no-compile -U pip \
+    && pip install --no-cache-dir --no-compile crossbar==${CROSSBAR_VERSION}
+
+
+#
+# Final image
+#
+
+FROM ${IMAGE_PREFIX}python:3.6-slim
 MAINTAINER The Crossbar.io Project <support@crossbario.com>
 
 # Metadata
-ARG CROSSBAR_VERSION
 ARG BUILD_DATE
 ARG CROSSBAR_VCS_REF
+ARG CROSSBAR_VERSION
 
 # Metadata labeling
 LABEL org.label-schema.build-date=$BUILD_DATE \
@@ -24,29 +43,23 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
 ENV HOME /node
 ENV DEBIAN_FRONTEND noninteractive
 ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
 
-# install dependencies and Crossbar.io
-RUN    apt-get update \
+RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-               ca-certificates \
-               expat \
-               build-essential \
-               libssl-dev \
-
-    # install Crossbar.io from PyPI
-    && pip install --no-cache-dir -U pip \
-    && pip install --no-cache-dir crossbar==${CROSSBAR_VERSION} \
-
-    # minimize image
-    && apt-get remove -y build-essential \
-    && rm -rf ~/.cache \
-    && rm -rf /var/lib/apt/lists/*
-
-# test if everything installed properly
-RUN crossbar version
+            libffi6 \
+            libssl1.0.0 \
+    && apt-get clean
 
 # add our user and group
-RUN adduser --system --group --uid 242 --home /node crossbar
+RUN adduser --system --group --uid 242 -c "Crossbar.io Service" --home /node crossbar
+
+# copy all installed binaries and Python packages
+COPY --from=0 /usr/local/bin /usr/local/bin/
+COPY --from=0 /usr/local/lib/python3.6/site-packages /usr/local/lib/python3.6/site-packages/
+
+# test if everything installed properly
+RUN PYTHONDONTWRITEBYTECODE=1 crossbar version
 
 # initialize a Crossbar.io node
 COPY ./node/ /node/
@@ -60,7 +73,7 @@ WORKDIR /node
 
 # run under this user, and expose default port
 USER crossbar
-EXPOSE 8080 8000
+EXPOSE 8080
 
 # entrypoint for the Docker image is the Crossbar.io executable
-ENTRYPOINT ["crossbar", "start", "--cbdir", "/node/.crossbar"]
+ENTRYPOINT ["crossbar", "start"]
