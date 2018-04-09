@@ -1,5 +1,0 @@
-.qemu
-*.pid
-*.key
-.DS_Store
-*~
